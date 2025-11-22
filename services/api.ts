@@ -7,57 +7,40 @@ export const TMDB_CONFIG = {
   }
 };
 
-export const fetchMovies = async ({ query }: { query: string }) => {
-  const endpoint = query ?
-    `/search/movie?query=${encodeURIComponent(query)}` :
-    `/discover/movie?sort_by=popularity.desc`;
-
+const tmdbRequest = async (endpoint: string) => {
   const response = await fetch(`${TMDB_CONFIG.BASE_URL}${endpoint}`, {
     method: 'GET',
     headers: TMDB_CONFIG.headers,
   });
 
-  if (response.status === 204) {
-    return [];
-  }
+  if (response.status === 204) return null;
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch movies: HTTP ${response.status}`);
+    throw new Error(`TMDB request failed: HTTP ${response.status}`);
   }
-
 
   const text = await response.text();
-  if (!text) {
-    return [];
-  }
+  if (!text) return null;
 
-  const data = JSON.parse(text);
+  return JSON.parse(text);
+};
 
-  return data.results || [];
+export const fetchMovies = async ({ query }: { query: string }) => {
+  const endpoint = query
+    ? `/search/movie?query=${encodeURIComponent(query)}`
+    : `/discover/movie?sort_by=popularity.desc`;
 
-}
+  const data = await tmdbRequest(endpoint);
+  return data?.results || [];
+};
 
 export const fetchPopularMovies = async () => {
-  const response = await fetch(`${TMDB_CONFIG.BASE_URL}/movie/top_rated`, {
-    method: 'GET',
-    headers: TMDB_CONFIG.headers,
-  });
+  const data = await tmdbRequest('/movie/top_rated');
+  return data?.results || [];
+};
 
-  if (response.status === 204) {
-    return [];
-  }
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch movies: HTTP ${response.status}`);
-  }
-
-
-  const text = await response.text();
-  if (!text) {
-    return [];
-  }
-
-  const data = JSON.parse(text);
-
-  return data.results || [];
-}
+export const fetchMovieDetails = async (
+  movieId: number
+): Promise<MovieDetails> => {
+  return tmdbRequest(`/movie/${movieId}`);
+};
